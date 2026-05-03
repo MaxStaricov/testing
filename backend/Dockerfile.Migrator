@@ -1,0 +1,19 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+COPY ["TestModule.Backend.sln", "./"]
+COPY ["Migrator/Migrator.csproj", "Migrator/"]
+
+RUN dotnet restore "Migrator/Migrator.csproj"
+
+COPY Migrator/ ./Migrator/
+
+WORKDIR "/src/Migrator"
+RUN dotnet build "Migrator.csproj" -c Release -o /app/build
+RUN dotnet publish "Migrator.csproj" -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/runtime:9.0 AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+COPY Migrator/Scripts ./Scripts
+ENTRYPOINT ["dotnet", "Migrator.dll"]
