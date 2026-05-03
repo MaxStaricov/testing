@@ -4,9 +4,26 @@ using Xunit;
 
 namespace Domain.XUnitTests;
 
+/// <summary>
+/// Unit-тесты для <see cref="Dish.RecalculateMacrosFromIngredients"/>.
+///
+/// Цель: проверить автоматический расчет КБЖУ блюда как суммы КБЖУ ингредиентов
+/// пропорционально их весу в граммах.
+///
+/// </summary>
 public class DishRecalculateMacrosTests
 {
-    private static Product CreateProduct(decimal calories, decimal proteins, decimal fats, decimal carbohydrates) =>
+    private static DishProductItem Ingredient(Product? product, decimal amountInGrams) =>
+        new()
+        {
+            Product = product!,
+            AmountInGrams = amountInGrams
+        };
+    private static Product ProductWithMacros(
+        decimal calories,
+        decimal proteins,
+        decimal fats,
+        decimal carbohydrates) =>
         new()
         {
             Calories = calories,
@@ -15,202 +32,258 @@ public class DishRecalculateMacrosTests
             Carbohydrates = carbohydrates
         };
 
-    private static DishProductItem CreateIngredient(Product product, decimal amountInGrams) =>
-        new()
-        {
-            Product = product,
-            AmountInGrams = amountInGrams
-        };
+    private static void AssertMacros(
+        Dish dish,
+        decimal expectedCalories,
+        decimal expectedProteins,
+        decimal expectedFats,
+        decimal expectedCarbohydrates)
+    {
+        dish.Calories.Should().Be(expectedCalories);
+        dish.Proteins.Should().Be(expectedProteins);
+        dish.Fats.Should().Be(expectedFats);
+        dish.Carbohydrates.Should().Be(expectedCarbohydrates);
+    }
 
+
+
+
+
+    /// <summary>
+    /// EP: список ингредиентов отсутствует.
+    /// Ожидаем сброс всех рассчитанных значений в 0.
+    /// </summary>
     [Fact]
     public void RecalculateMacros_WhenIngredientsIsNull_SetsAllMacrosToZero()
     {
-        var dish = new Dish { Ingredients = null! };
-
-        dish.RecalculateMacrosFromIngredients();
-
-        dish.Calories.Should().Be(0m);
-        dish.Proteins.Should().Be(0m);
-        dish.Fats.Should().Be(0m);
-        dish.Carbohydrates.Should().Be(0m);
-    }
-
-    [Fact]
-    public void RecalculateMacros_WhenIngredientsIsEmpty_SetsAllMacrosToZero()
-    {
-        var dish = new Dish { Ingredients = [] };
-
-        dish.RecalculateMacrosFromIngredients();
-
-        dish.Calories.Should().Be(0m);
-        dish.Proteins.Should().Be(0m);
-        dish.Fats.Should().Be(0m);
-        dish.Carbohydrates.Should().Be(0m);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    [InlineData(-0.5)]
-    public void RecalculateMacros_WhenAmountIsZeroOrNegative_SkipsIngredient(decimal amountInGrams)
-    {
-        var product = CreateProduct(200m, 10m, 5m, 20m);
         var dish = new Dish
         {
-            Ingredients = [CreateIngredient(product, amountInGrams)]
+            Calories = 10m,
+            Proteins = 20m,
+            Fats = 30m,
+            Carbohydrates = 40m,
+            Ingredients = null!
         };
 
         dish.RecalculateMacrosFromIngredients();
 
-        dish.Calories.Should().Be(0m);
-        dish.Proteins.Should().Be(0m);
-        dish.Fats.Should().Be(0m);
-        dish.Carbohydrates.Should().Be(0m);
+        AssertMacros(dish, 0m, 0m, 0m, 0m);
     }
 
+    /// <summary>
+    /// EP: список ингредиентов есть, но он пустой.
+    /// отдельный класс эквивалентности от null.
+    /// </summary>
     [Fact]
-    public void RecalculateMacros_WhenProductIsNull_SkipsIngredient()
+    public void RecalculateMacros_WhenIngredientsIsEmpty_SetsAllMacrosToZero()
     {
+        var dish = new Dish
+        {
+            Calories = 10m,
+            Proteins = 20m,
+            Fats = 30m,
+            Carbohydrates = 40m,
+            Ingredients = []
+        };
+
+        dish.RecalculateMacrosFromIngredients();
+
+        AssertMacros(dish, 0m, 0m, 0m, 0m);
+    }
+
+    /// <summary>
+    /// EP: один валидный ингредиент с весом больше 100 г.
+    /// Проверяем стандартный рабочий сценарий с коэффициентом больше 1.
+    /// </summary>
+    [Fact]
+    public void RecalculateMacros_WhenIngredientAmountIsMoreThan100g_MultipliesProductMacros()
+    {
+        var product = ProductWithMacros(100m, 10m, 5m, 20m);
+        var dish = new Dish
+        {
+            Ingredients = [Ingredient(product, 250m)]
+        };
+
+        dish.RecalculateMacrosFromIngredients();
+
+        AssertMacros(dish, 250m, 25m, 12.5m, 50m);
+    }
+
+    /// <summary>
+    /// EP: один валидный ингредиент с весом меньше 100 г.
+    /// Проверяем стандартный рабочий сценарий с коэффициентом меньше 1.
+    /// </summary>
+    [Fact]
+    public void RecalculateMacros_WhenIngredientAmountIsLessThan100g_CalculatesFractionOfProductMacros()
+    {
+        var product = ProductWithMacros(100m, 10m, 6m, 20m);
+        var dish = new Dish
+        {
+            Ingredients = [Ingredient(product, 50m)]
+        };
+
+        dish.RecalculateMacrosFromIngredients();
+
+        AssertMacros(dish, 50m, 5m, 3m, 10m);
+    }
+
+    /// <summary>
+    /// EP: несколько валидных ингредиентов.
+    /// КБЖУ блюда должны быть суммой пропорционально пересчитанных КБЖУ продуктов.
+    /// </summary>
+    [Fact]
+    public void RecalculateMacros_WhenDishHasMultipleValidIngredients_SumsProportionalMacros()
+    {
+        var meat = ProductWithMacros(250m, 26m, 15m, 0m);
+        var potato = ProductWithMacros(77m, 2m, 0.4m, 17m);
         var dish = new Dish
         {
             Ingredients =
             [
-                new DishProductItem
-                {
-                    Product = null!,
-                    AmountInGrams = 150m
-                }
+                Ingredient(meat, 200m),
+                Ingredient(potato, 150m)
             ]
         };
 
         dish.RecalculateMacrosFromIngredients();
 
-        dish.Calories.Should().Be(0m);
-        dish.Proteins.Should().Be(0m);
-        dish.Fats.Should().Be(0m);
-        dish.Carbohydrates.Should().Be(0m);
+        AssertMacros(
+            dish,
+            expectedCalories: 250m * 2m + 77m * 1.5m,
+            expectedProteins: 26m * 2m + 2m * 1.5m,
+            expectedFats: 15m * 2m + 0.4m * 1.5m,
+            expectedCarbohydrates: 0m * 2m + 17m * 1.5m);
     }
 
+    /// <summary>
+    /// EP: смешанный список валидных и невалидных ингредиентов.
+    /// В расчете должны участвовать только элементы с Product != null и AmountInGrams > 0.
+    /// </summary>
     [Fact]
-    public void RecalculateMacros_With100gOfIngredient_EqualsProductMacros()
+    public void RecalculateMacros_WhenDishHasMixedIngredients_SumsOnlyValidIngredients()
     {
-        var product = CreateProduct(250.5m, 12.3m, 8.7m, 30.1m);
+        var validProduct = ProductWithMacros(100m, 10m, 5m, 10m);
+        var zeroAmountProduct = ProductWithMacros(200m, 20m, 10m, 20m);
+        var negativeAmountProduct = ProductWithMacros(50m, 5m, 2m, 5m);
         var dish = new Dish
         {
-            Ingredients = [CreateIngredient(product, 100m)]
+            Ingredients =
+            [
+                Ingredient(validProduct, 100m),
+                Ingredient(zeroAmountProduct, 0m),
+                Ingredient(null, 50m),
+                Ingredient(negativeAmountProduct, -10m)
+            ]
         };
 
         dish.RecalculateMacrosFromIngredients();
 
-        dish.Calories.Should().Be(250.5m);
-        dish.Proteins.Should().Be(12.3m);
-        dish.Fats.Should().Be(8.7m);
-        dish.Carbohydrates.Should().Be(30.1m);
+        AssertMacros(dish, 100m, 10m, 5m, 10m);
     }
 
-    [Fact]
-    public void RecalculateMacros_WithMinimalPositiveWeight_CalculatesCorrectProportion()
+    /// <summary>
+    /// BVA: 0 г и отрицательный вес находятся на границе/за границей валидного диапазона.
+    /// Такие ингредиенты должны быть проигнорированы.
+    /// </summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(-100)]
+    public void RecalculateMacros_WhenAmountIsZeroOrNegative_SkipsIngredient(int amountInGrams)
     {
-        var product = CreateProduct(1000m, 50m, 50m, 50m);
+        var product = ProductWithMacros(200m, 10m, 5m, 20m);
         var dish = new Dish
         {
-            Ingredients = [CreateIngredient(product, 0.01m)]
+            Ingredients = [Ingredient(product, amountInGrams)]
+        };
+
+        dish.RecalculateMacrosFromIngredients();
+
+        AssertMacros(dish, 0m, 0m, 0m, 0m);
+    }
+
+    /// <summary>
+    /// BVA: 100 г является базовой границей, при которой коэффициент ratio равен 1.
+    /// КБЖУ блюда должны совпасть с КБЖУ продукта на 100 г.
+    /// </summary>
+    [Fact]
+    public void RecalculateMacros_WhenIngredientAmountIs100g_EqualsProductMacros()
+    {
+        var product = ProductWithMacros(250.5m, 12.3m, 8.7m, 30.1m);
+        var dish = new Dish
+        {
+            Ingredients = [Ingredient(product, 100m)]
+        };
+
+        dish.RecalculateMacrosFromIngredients();
+
+        AssertMacros(dish, 250.5m, 12.3m, 8.7m, 30.1m);
+    }
+
+    /// <summary>
+    /// BVA: минимальный положительный вес 0.01 г.
+    /// Проверяем, что decimal-расчет сохраняет точность пропорции.
+    /// </summary>
+    [Fact]
+    public void RecalculateMacros_WhenIngredientAmountIsMinimalPositiveValue_CalculatesProportion()
+    {
+        var product = ProductWithMacros(1000m, 50m, 25m, 75m);
+        var dish = new Dish
+        {
+            Ingredients = [Ingredient(product, 0.01m)]
         };
 
         dish.RecalculateMacrosFromIngredients();
 
         var ratio = 0.01m / 100m;
-        dish.Calories.Should().Be(product.Calories * ratio);
-        dish.Proteins.Should().Be(product.Proteins * ratio);
-        dish.Fats.Should().Be(product.Fats * ratio);
-        dish.Carbohydrates.Should().Be(product.Carbohydrates * ratio);
+        AssertMacros(
+            dish,
+            product.Calories * ratio,
+            product.Proteins * ratio,
+            product.Fats * ratio,
+            product.Carbohydrates * ratio);
     }
 
-    [Theory]
-    [InlineData(0, 0, 0, 0)]
-    [InlineData(900, 100, 100, 100)]
-    public void RecalculateMacros_WithBoundaryMacroValues_CalculatesCorrectly(
-        decimal calories,
-        decimal proteins,
-        decimal fats,
-        decimal carbohydrates)
+
+    /// <summary>
+    /// BVA: КБЖУ продукта равны 0.
+    /// Это нижняя граница значений макронутриентов.
+    /// </summary>
+    [Fact]
+    public void RecalculateMacros_WhenProductMacrosAreZero_ReturnsZeroMacros()
     {
-        var product = CreateProduct(calories, proteins, fats, carbohydrates);
+        var product = ProductWithMacros(0m, 0m, 0m, 0m);
         var dish = new Dish
         {
-            Ingredients = [CreateIngredient(product, 100m)]
+            Ingredients = [Ingredient(product, 100m)]
         };
 
         dish.RecalculateMacrosFromIngredients();
 
-        dish.Calories.Should().Be(calories);
-        dish.Proteins.Should().Be(proteins);
-        dish.Fats.Should().Be(fats);
-        dish.Carbohydrates.Should().Be(carbohydrates);
+        AssertMacros(dish, 0m, 0m, 0m, 0m);
     }
 
+    /// <summary>
+    /// BVA: дробный вес ингредиента.
+    /// Проверяем точность decimal-арифметики без округления внутри доменной функции.
+    /// </summary>
     [Fact]
-    public void RecalculateMacros_WithMultipleValidIngredients_SumsProportionalValues()
+    public void RecalculateMacros_WhenIngredientAmountIsFractional_MaintainsDecimalPrecision()
     {
-        var firstProduct = CreateProduct(200m, 10m, 8m, 20m);
-        var secondProduct = CreateProduct(150m, 12m, 5m, 25m);
+        var product = ProductWithMacros(123.456m, 10.111m, 5.222m, 20.333m);
         var dish = new Dish
         {
-            Ingredients =
-            [
-                CreateIngredient(firstProduct, 150m),
-                CreateIngredient(secondProduct, 200m)
-            ]
-        };
-
-        dish.RecalculateMacrosFromIngredients();
-
-        dish.Calories.Should().Be(600m);
-        dish.Proteins.Should().Be(39m);
-        dish.Fats.Should().Be(22m);
-        dish.Carbohydrates.Should().Be(80m);
-    }
-
-    [Fact]
-    public void RecalculateMacros_WithMixedValidAndInvalidIngredients_SumsOnlyValid()
-    {
-        var validProduct = CreateProduct(100m, 10m, 5m, 10m);
-        var zeroAmountProduct = CreateProduct(200m, 20m, 10m, 20m);
-        var negativeAmountProduct = CreateProduct(50m, 5m, 2m, 5m);
-        var dish = new Dish
-        {
-            Ingredients =
-            [
-                CreateIngredient(validProduct, 100m),
-                CreateIngredient(zeroAmountProduct, 0m),
-                new DishProductItem { Product = null!, AmountInGrams = 50m },
-                CreateIngredient(negativeAmountProduct, -10m)
-            ]
-        };
-
-        dish.RecalculateMacrosFromIngredients();
-
-        dish.Calories.Should().Be(100m);
-        dish.Proteins.Should().Be(10m);
-        dish.Fats.Should().Be(5m);
-        dish.Carbohydrates.Should().Be(10m);
-    }
-
-    [Fact]
-    public void RecalculateMacros_WithFractionalGrams_MaintainsDecimalPrecision()
-    {
-        var product = CreateProduct(123.456m, 10.111m, 5.222m, 20.333m);
-        var dish = new Dish
-        {
-            Ingredients = [CreateIngredient(product, 33.333m)]
+            Ingredients = [Ingredient(product, 33.333m)]
         };
 
         dish.RecalculateMacrosFromIngredients();
 
         var ratio = 33.333m / 100m;
-        dish.Calories.Should().Be(product.Calories * ratio);
-        dish.Proteins.Should().Be(product.Proteins * ratio);
-        dish.Fats.Should().Be(product.Fats * ratio);
-        dish.Carbohydrates.Should().Be(product.Carbohydrates * ratio);
+        AssertMacros(
+            dish,
+            product.Calories * ratio,
+            product.Proteins * ratio,
+            product.Fats * ratio,
+            product.Carbohydrates * ratio);
     }
 }
