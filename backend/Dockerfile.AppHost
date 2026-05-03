@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-COPY ["TestModule.Backend.sln", "./"]
+COPY ["backend.sln", "./"]
 COPY ["AppHost/AppHost.csproj", "AppHost/"]
 COPY ["DB/DB.csproj", "DB/"]
 COPY ["Domain/Domain.csproj", "Domain/"]
