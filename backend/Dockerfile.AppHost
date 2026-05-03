@@ -1,0 +1,21 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+COPY ["TestModule.Backend.sln", "./"]
+COPY ["AppHost/AppHost.csproj", "AppHost/"]
+COPY ["DB/DB.csproj", "DB/"]
+COPY ["Domain/Domain.csproj", "Domain/"]
+COPY ["Infrastructure/Infrastructure.csproj", "Infrastructure/"]
+
+RUN dotnet restore "AppHost/AppHost.csproj"
+
+COPY . .
+
+WORKDIR "/src/AppHost"
+RUN dotnet build "AppHost.csproj" -c Release -o /app/build
+RUN dotnet publish "AppHost.csproj" -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "AppHost.dll"]

@@ -1,0 +1,144 @@
+# ============================================================
+# 🎯 .GITIGNORE: .NET 6/7/8 + Docker + macOS
+# ============================================================
+
+# ============================================================
+# 🔷 .NET / C# / MSBuild
+# ============================================================
+# Артефакты сборки
+[Bb]in/
+[Oo]bj/
+[Pp]ackages/
+
+# Файлы пользовательских настроек (не должны попадать в репо)
+*.user
+*.userprefs
+*.suo
+*.pidb.meta
+*.pdb
+*.dll.meta
+*.exe.meta
+
+# Журналы и кэши
+*.log
+*.pyc
+*.pyo
+*.pyd
+.Python
+__pycache__/
+
+# Rider / Visual Studio для Mac
+*.sln.ide/
+*.csproj.DotSettings.user
+.idea/
+*.swp
+*.swo
+*~
+
+# NuGet
+*.nupkg
+*.snk
+*.pfx
+
+# Отчёты тестов и покрытия (генерируются локально)
+[TestR]esult*/
+coverage.cobertura.xml
+coverage.opencover.xml
+*.coverage
+*.trx
+
+# ============================================================
+# 🐳 Docker
+# ============================================================
+# Чувствительные данные (никогда не коммитить!)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Docker runtime данные (если монтируются локально)
+docker-data/
+.volumes/
+*.dockerfile.bak
+
+# ⚠️ ВАЖНО: Dockerfile и docker-compose.yml ОБЫЧНО КОММИТЯТСЯ!
+# Не добавляйте их сюда, если не хотите скрывать инфраструктуру.
+
+# ============================================================
+# 🍎 macOS
+# ============================================================
+# Системные файлы
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Файлы метаданных
+.DocumentRevisions-V100/
+.fseventsd/
+.Spotlight-V100/
+.TemporaryItems/
+.Trashes/
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Расширения атрибутов
+.AppleDB/
+.AppleDesktop/
+Network Trash Folder/
+Temporary Items/
+
+# ============================================================
+# 💻 IDE и редакторы (кроссплатформенно)
+# ============================================================
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# JetBrains (Rider, IntelliJ)
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/shelf/
+
+# ============================================================
+# 🔐 Секреты и конфигурация окружения
+# ============================================================
+# Файлы с паролями, ключами, строками подключения
+appsettings*.Local.json
+secrets.json
+*.pem
+*.key
+*.p12
+
+# ============================================================
+# 🗑 Прочее (временные файлы, бэкапы)
+# ============================================================
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+*.orig
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+
+# ============================================================
+# ✅ Что ОБЯЗАТЕЛЬНО оставлять в репозитории
+# ============================================================
+# !.gitignore
+# !README.md
+# !Dockerfile
+# !docker-compose.yml
+# !docker-compose.override.yml (опционально, для локальных настроек)
+# !.dockerignore
+# !*.csproj
+# !*.sln
+# !appsettings.json (базовый, без секретов)
+# !Properties/launchSettings.json (если содержит только публичные настройки)
