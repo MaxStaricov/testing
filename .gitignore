@@ -1,0 +1,139 @@
+# 🔷 .NET / MSBuild / SDK
+[Bb]in/
+[Oo]bj/
+*.dll
+*.exe
+*.pdb
+*.mdb
+*.user
+*.userprefs
+*.suo
+*.sln.ide/
+*.csproj.DotSettings.user
+*.nupkg
+*.snupkg
+packages/
+*.log
+
+# 💻 IDE & Редакторы
+.vs/
+.idea/
+*.swp
+*~
+*.sublime-project
+*.sublime-workspace
+
+# 🍎 macOS (системные файлы)
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100/
+.fseventsd/
+.Spotlight-V100/
+.TemporaryItems/
+.Trashes/
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB/
+.AppleDesktop/
+Network Trash Folder/
+Temporary Items/
+.apdisk
+
+# 🔒 Локальные конфиги и секреты
+appsettings.*.Local.json
+appsettings.*.Development.json
+secrets.json
+*.env
+*.env.local
+Properties/launchSettings.json # ⚠️ Раскомментируйте, если содержит только публичные порты
+
+# 🧪 Тесты и покрытие
+TestResults/
+*.trx
+coverage.cobertura.xml
+coverage.opencover.xml
+*.coverage
+
+# 🗑 Временные и бэкапы
+*.tmp
+*.temp
+*.bak
+*.orig
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+
+# Vite + tps
+# 📦 Зависимости и менеджеры пакетов
+node_modules/
+.pnp
+.pnp.js
+.pnp.loader.mjs
+
+# ⚡ Артефакты сборки (Vite по умолчанию выводит в dist/)
+dist/
+build/
+
+# 🔹 Кэши Vite и TypeScript
+.vite/
+*.tsbuildinfo
+# Если используете tsc напрямую с outDir, добавьте:
+# *.js
+# *.js.map
+# *.d.ts
+
+# 🔒 Окружение и секреты (НИКОГДА не коммитьте!)
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 💻 IDE и редакторы
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# 🧪 Тесты, линтеры и покрытие
+coverage/
+.nyc_output/
+junit.xml
+test-results/
+playwright-report/
+playwright/.cache/
+.eslintcache
+.stylelintcache
+
+# 🐛 Логи отладки
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# 🍎🪟🐧 Системные файлы (кроссплатформенно)
+.DS_Store
+Thumbs.db
+Desktop.ini
+._*
+.AppleDouble
+.LSOverride
+
+# 🗑 Временные и резервные копии
+*.tmp
+*.temp
+*.bak
+*.orig
