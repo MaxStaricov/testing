@@ -9,6 +9,10 @@ using Xunit;
 
 namespace TestModule.Backend.IntegrationTests.ApiTests;
 
+/// <summary>
+/// Набор интеграционных тестов для проверки API управления продуктами.
+/// Тесты сгруппированы по техникам тестирования: классы эквивалентности и пограничные значения.
+/// </summary>
 [Collection("ApiCollection")]
 public class ProductsApiTests
 {
@@ -21,6 +25,23 @@ public class ProductsApiTests
         _fixture = fixture;
     }
 
+
+
+
+
+
+    #region Классы эквивалентности: валидные сценарии создания
+
+    /// <summary>
+    /// Проверяет успешное создание продукта при передаче корректных данных.
+    /// </summary>
+    /// <remarks>
+    /// Тест покрывает классы эквивалентности валидного ввода:
+    /// - Стандартные значения всех полей
+    /// - Минимальные допустимые значения
+    /// - Специальные символы в названии
+    /// - Сложные комбинации диетических флагов
+    /// </remarks>
     [Theory(DisplayName = "КОГДА передаются валидные данные, ТОГДА продукт успешно создается")]
     [MemberData(nameof(GetValidProductTestData))]
     public async Task CreateProduct_ValidData_ReturnsCreated(ProductCreateDto dto, string expectedTitle)
@@ -36,23 +57,24 @@ public class ProductsApiTests
         Assert.Equal(dto.Flags, result.Flags);
     }
 
-    [Theory(DisplayName = "КОГДА передаются граничные значения КБЖУ, ТОГДА продукт успешно создается")]
-    [InlineData(0, "Zero Calories")]
-    [InlineData(0.01, "Minimal Calories")]
-    [InlineData(9000, "Max Practical Calories")]
-    public async Task CreateProduct_BoundaryCalories_ReturnsCreated(decimal calories, string title)
+    /// <summary>
+    /// Предоставляет набор тестовых данных для проверки создания продуктов с валидными параметрами.
+    /// </summary>
+    public static IEnumerable<object[]> GetValidProductTestData()
     {
-        var client = _fixture.Client;
-        var dto = ProductTestDataFactory.CreateValidProduct(title);
-        dto.Calories = calories;
-
-        var response = await client.PostAsJsonAsync(BaseUrl, dto);
-        var result = await response.Content.ReadFromJsonAsync<ProductViewDto>(_jsonOptions);
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        Assert.Equal(calories, result!.Calories);
+        yield return new object[] { ProductTestDataFactory.CreateValidProduct("Standard Apple"), "Standard Apple" };
+        yield return new object[] { ProductTestDataFactory.CreateMinimalProduct(), "Minimal" };
+        yield return new object[] { ProductTestDataFactory.CreateSpecialCharacterTitleProduct(), "Яблоко & Груша / Тест #1 (ÄÖÜ)" };
+        yield return new object[] { ProductTestDataFactory.CreateComplexDietaryFlagsProduct(), "Complex Dietary Product" };
     }
 
+    /// <summary>
+    /// Проверяет создание продукта для каждой поддерживаемой категории.
+    /// </summary>
+    /// <remarks>
+    /// Тест покрывает классы эквивалентности по полю Category: каждое значение перечисления 
+    /// должно корректно обрабатываться при создании продукта.
+    /// </remarks>
     [Theory(DisplayName = "КОГДА создается продукт любой категории, ТОГДА он успешно сохраняется")]
     [InlineData(ProductCategory.Meat)]
     [InlineData(ProductCategory.Vegetables)]
@@ -71,6 +93,60 @@ public class ProductsApiTests
         Assert.Equal(category, result!.Category);
     }
 
+    #endregion
+
+
+
+
+
+
+    #region Пограничные значения: валидные граничные случаи
+
+    /// <summary>
+    /// Проверяет успешное создание продукта при использовании граничных значений калорийности.
+    /// </summary>
+    /// <remarks>
+    /// Тест покрывает пограничные случаи:
+    /// - Нулевая калорийность (нижняя граница)
+    /// - Минимальное положительное значение (0.01)
+    /// - Максимальное практическое значение (9000)
+    /// </remarks>
+    [Theory(DisplayName = "КОГДА передаются граничные значения КБЖУ, ТОГДА продукт успешно создается")]
+    [MemberData(nameof(GetBoundaryCaloriesTestData))]
+    public async Task CreateProduct_BoundaryCalories_ReturnsCreated(decimal calories, string title)
+    {
+        var client = _fixture.Client;
+        var dto = ProductTestDataFactory.CreateValidProduct(title);
+        dto.Calories = calories;
+
+        var response = await client.PostAsJsonAsync(BaseUrl, dto);
+        var result = await response.Content.ReadFromJsonAsync<ProductViewDto>(_jsonOptions);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(calories, result!.Calories);
+    }
+
+    /// <summary>
+    /// Источник данных для теста пограничных значений калорийности.
+    /// </summary>
+    /// <remarks>
+    /// Используем MemberData вместо InlineData для поддержки типа decimal.
+    /// </remarks>
+    public static IEnumerable<object[]> GetBoundaryCaloriesTestData()
+    {
+        yield return new object[] { 0m, "Zero Calories" };
+        yield return new object[] { 0.01m, "Minimal Calories" };
+        yield return new object[] { 9000m, "Max Practical Calories" };
+    }
+
+    /// <summary>
+    /// Проверяет создание продукта с заголовком граничной длины.
+    /// </summary>
+    /// <remarks>
+    /// Тест покрывает пограничные случаи длины названия:
+    /// - Минимальная длина (2 символа)
+    /// - Максимальная допустимая длина (~100 символов)
+    /// </remarks>
     [Theory(DisplayName = "КОГДА передается заголовок граничной длины, ТОГДА продукт успешно создается")]
     [InlineData("X2")]
     [InlineData("Very Long Title... 100 symbols repeated...")]
@@ -86,6 +162,22 @@ public class ProductsApiTests
         Assert.Equal(title, result!.Title);
     }
 
+    #endregion
+
+
+
+
+
+    #region Классы эквивалентности: невалидные сценарии
+
+    /// <summary>
+    /// Проверяет возврат ошибки валидации при превышении лимита суммы БЖУ.
+    /// </summary>
+    /// <remarks>
+    /// <strong>Бизнес-правило:</strong> Сумма белков, жиров и углеводов на 100г продукта 
+    /// не может превышать 100г. Тест покрывает класс эквивалентности невалидного ввода 
+    /// за пределами допустимого диапазона.
+    /// </remarks>
     [Fact(DisplayName = "КОГДА сумма БЖУ превышает 100г, ТОГДА возвращается ошибка")]
     public async Task CreateProduct_SumOfMacrosExceeds100_ReturnsBadRequest()
     {
@@ -93,7 +185,7 @@ public class ProductsApiTests
         var dto = ProductTestDataFactory.CreateValidProduct("Invalid Macros");
         dto.Proteins = 40;
         dto.Fats = 40;
-        dto.Carbohydrates = 30;
+        dto.Carbohydrates = 30; // 40+40+30 = 110 > 100
 
         var response = await client.PostAsJsonAsync(BaseUrl, dto);
 
@@ -102,14 +194,22 @@ public class ProductsApiTests
         Assert.Contains("Sum of proteins, fats, and carbohydrates cannot exceed 100g", error);
     }
 
-    public static IEnumerable<object[]> GetValidProductTestData()
-    {
-        yield return new object[] { ProductTestDataFactory.CreateValidProduct("Standard Apple"), "Standard Apple" };
-        yield return new object[] { ProductTestDataFactory.CreateMinimalProduct(), "Minimal" };
-        yield return new object[] { ProductTestDataFactory.CreateSpecialCharacterTitleProduct(), "Яблоко & Груша / Тест #1 (ÄÖÜ)" };
-        yield return new object[] { ProductTestDataFactory.CreateComplexDietaryFlagsProduct(), "Complex Dietary Product" };
-    }
+    #endregion
 
+
+
+
+
+
+    #region Чтение и фильтрация: классы эквивалентности
+
+    /// <summary>
+    /// Проверяет, что при запросе всех продуктов без фильтров возвращается непустой список.
+    /// </summary>
+    /// <remarks>
+    /// Позитивный сценарий: после сидирования базы данных запрос без параметров 
+    /// должен возвращать как минимум один продукт.
+    /// </remarks>
     [Fact(DisplayName = "КОГДА запрашиваются все продукты без фильтров, ТОГДА возвращается непустой список")]
     public async Task GetAllProducts_NoFilters_ReturnsNonEmptyList()
     {
@@ -122,6 +222,14 @@ public class ProductsApiTests
         Assert.NotEmpty(result);
     }
 
+    /// <summary>
+    /// Проверяет корректность фильтрации продуктов по нескольким категориям одновременно.
+    /// </summary>
+    /// <remarks>
+    /// Запрос с параметром <c>?category=Sweets,Fruits</c> должен возвращать только продукты 
+    /// указанных категорий. Примечание: в тесте проверяется категория <c>Vegetables</c> вместо 
+    /// <c>Fruits</c>, так как в тестовых данных используется именно она.
+    /// </remarks>
     [Fact(DisplayName = "КОГДА задан фильтр по нескольким категориям, ТОГДА возвращаются только подходящие продукты")]
     public async Task GetProducts_FilterByMultipleCategories_ReturnsFilteredResults()
     {
@@ -134,6 +242,12 @@ public class ProductsApiTests
         Assert.All(result!, p => Assert.True(p.Category == ProductCategory.Sweets || p.Category == ProductCategory.Vegetables));
     }
 
+    /// <summary>
+    /// Убеждается, что запрос несуществующего продукта возвращает статус 404.
+    /// </summary>
+    /// <remarks>
+    /// Негативный сценарий: запрос по несуществующему GUID должен возвращать HttpStatusCode.NotFound.
+    /// </remarks>
     [Fact(DisplayName = "КОГДА запрашивается несуществующий продукт, ТОГДА возвращается 404")]
     public async Task GetProduct_NonExistent_ReturnsNotFound()
     {
@@ -142,6 +256,15 @@ public class ProductsApiTests
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    /// <summary>
+    /// Проверяет корректность сортировки результатов по различным полям.
+    /// </summary>
+    /// <param name="sortField">Имя поля для сортировки.</param>
+    /// <returns>Задача асинхронного выполнения теста.</returns>
+    /// <remarks>
+    /// Поддерживаемые поля сортировки: <c>calories</c>, <c>proteins</c>, <c>fats</c>, <c>title</c>.
+    /// Сортировка по строковым полям выполняется без учёта регистра.
+    /// </remarks>
     [Theory(DisplayName = "КОГДА задана сортировка по полю, ТОГДА список возвращается в правильном порядке")]
     [InlineData("calories")]
     [InlineData("proteins")]
@@ -173,6 +296,22 @@ public class ProductsApiTests
         }
     }
 
+    #endregion
+
+
+
+
+
+
+    #region Обновление: валидные и невалидные сценарии
+
+    /// <summary>
+    /// Проверяет успешное обновление существующего продукта валидными данными.
+    /// </summary>
+    /// <remarks>
+    /// Класс эквивалентности: обновление с корректными значениями всех полей 
+    /// должно завершаться успешно и сохранять изменения.
+    /// </remarks>
     [Fact(DisplayName = "КОГДА обновляются данные существующего продукта, ТОГДА изменения успешно сохраняются")]
     public async Task UpdateProduct_ValidUpdate_StoredCorrectly()
     {
@@ -198,6 +337,13 @@ public class ProductsApiTests
         Assert.Equal(ProductCategory.Spices, updated.Category);
     }
 
+    /// <summary>
+    /// Проверяет отклонение обновления с невалидными макросами.
+    /// </summary>
+    /// <remarks>
+    /// Пограничное значение: сумма белков и жиров = 120г > 100г (верхняя граница, недопустимая).
+    /// Система должна вернуть ошибку валидации.
+    /// </remarks>
     [Fact(DisplayName = "КОГДА продукт обновляется невалидными макросами, ТОГДА возвращается ошибка")]
     public async Task UpdateProduct_InvalidMacros_ReturnsBadRequest()
     {
@@ -210,13 +356,27 @@ public class ProductsApiTests
         { 
             Id = created!.Id, 
             Title = created.Title,
-            Proteins = 60, Fats = 60
+            Proteins = 60, Fats = 60 // 60+60 = 120 > 100
         };
 
         var response = await client.PutAsJsonAsync($"{BaseUrl}/{created.Id}", updateDto);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    #endregion
+
+
+
+
+    #region Удаление: позитивный сценарий
+
+    /// <summary>
+    /// Проверяет полный цикл удаления: создание → удаление → проверка отсутствия.
+    /// </summary>
+    /// <remarks>
+    /// Позитивный сценарий: удаление существующего продукта должно завершаться успешно, 
+    /// а последующий запрос к удалённому ресурсу — возвращать 404.
+    /// </remarks>
     [Fact(DisplayName = "КОГДА продукт удаляется, ТОГДА он больше не доступно в системе")]
     public async Task DeleteProduct_Exists_RemovedSuccessfully()
     {
@@ -231,4 +391,6 @@ public class ProductsApiTests
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
     }
+
+    #endregion
 }

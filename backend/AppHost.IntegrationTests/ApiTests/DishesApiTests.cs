@@ -9,6 +9,10 @@ using Xunit;
 
 namespace TestModule.Backend.IntegrationTests.ApiTests;
 
+/// <summary>
+/// Набор интеграционных тестов для проверки API управления блюдами.
+/// Тесты сгруппированы по техникам тестирования: классы эквивалентности и пограничные значения.
+/// </summary>
 [Collection("ApiCollection")]
 public class DishesApiTests
 {
@@ -21,6 +25,18 @@ public class DishesApiTests
         _fixture = fixture;
     }
 
+
+
+
+    #region Классы эквивалентности: валидные сценарии создания
+
+    /// <summary>
+    /// Проверяет создание блюда с автоматическим определением категории по маркеру в названии.
+    /// </summary>
+    /// <remarks>
+    /// Маркеры вида "!салат", "!десерт", "!напиток" в названии блюда должны автоматически 
+    /// устанавливать соответствующую категорию и удаляться из итогового названия.
+    /// </remarks>
     [Theory(DisplayName = "КОГДА в названии блюда есть макрос, ТОГДА категория устанавливается автоматически")]
     [InlineData("Весенний !салат", DishCategory.Salad)]
     [InlineData("Шоколадный !десерт", DishCategory.Dessert)]
@@ -38,22 +54,13 @@ public class DishesApiTests
         Assert.DoesNotContain("!", result.Title);
     }
 
-    [Theory(DisplayName = "КОГДА передаются валидные граничные значения, ТОГДА блюдо успешно создается")]
-    [MemberData(nameof(GetValidBoundaryDishTestData))]
-    public async Task CreateDish_ValidBoundaryValues_ReturnsCreated(DishCreateDto dto)
-    {
-        var client = _fixture.Client;
-        var response = await client.PostAsJsonAsync(DishUrl, dto);
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
-
-    public static IEnumerable<object[]> GetValidBoundaryDishTestData()
-    {
-        yield return new object[] { DishTestDataFactory.CreateSmallPortionDish() };
-        yield return new object[] { DishTestDataFactory.CreateLargePortionDish() };
-        yield return new object[] { DishTestDataFactory.CreateMacrosAtExactLimitDish() };
-    }
-
+    /// <summary>
+    /// Проверяет успешное создание блюд для всех поддерживаемых категорий.
+    /// </summary>
+    /// <remarks>
+    /// Тест покрывает классы эквивалентности по полю Category: каждое значение перечисления 
+    /// должно корректно обрабатываться при создании блюда.
+    /// </remarks>
     [Theory(DisplayName = "КОГДА создается блюдо любой категории, ТОГДА оно успешно сохраняется")]
     [InlineData(DishCategory.FirstCourse)]
     [InlineData(DishCategory.SecondCourse)]
@@ -74,19 +81,13 @@ public class DishesApiTests
         Assert.Equal(category, result!.Category);
     }
 
-    [Theory(DisplayName = "КОГДА передаются некорректные данные, ТОГДА возвращается ошибка валидации")]
-    [MemberData(nameof(GetInvalidDishTestData))]
-    public async Task CreateDish_InvalidData_ReturnsBadRequest(DishCreateDto dto, string expectedError)
-    {
-        var client = _fixture.Client;
-
-        var response = await client.PostAsJsonAsync(DishUrl, dto);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var error = await response.Content.ReadAsStringAsync();
-        Assert.Contains(expectedError, error);
-    }
-
+    /// <summary>
+    /// Проверяет фильтрацию противоречивых диетических флагов при создании блюда.
+    /// </summary>
+    /// <remarks>
+    /// Если блюдо помечено как веганское, но содержит ингредиенты животного происхождения, 
+    /// флаг Vegan должен быть автоматически удалён из результата.
+    /// </remarks>
     [Fact(DisplayName = "КОГДА флаги блюда противоречат ингредиентам, ТОГДА некорректные флаги фильтруются")]
     public async Task CreateDish_WithConflictingFlags_FlagsAreFiltered()
     {
@@ -102,12 +103,97 @@ public class DishesApiTests
         Assert.False(result!.Flags.HasFlag(DietaryFlags.Vegan));
     }
 
+    #endregion
+
+
+
+
+
+    #region Пограничные значения: валидные граничные случаи создания
+
+    /// <summary>
+    /// Проверяет создание блюд с пограничными, но валидными значениями параметров.
+    /// </summary>
+    /// <remarks>
+    /// Тест покрывает пограничные случаи:
+    /// - Минимальный размер порции
+    /// - Максимальный размер порции  
+    /// - Сумма БЖУ, равная ровно 100г на 100г продукта (верхняя граница)
+    /// </remarks>
+    [Theory(DisplayName = "КОГДА передаются валидные граничные значения, ТОГДА блюдо успешно создается")]
+    [MemberData(nameof(GetValidBoundaryDishTestData))]
+    public async Task CreateDish_ValidBoundaryValues_ReturnsCreated(DishCreateDto dto)
+    {
+        var client = _fixture.Client;
+        var response = await client.PostAsJsonAsync(DishUrl, dto);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Источник данных для теста пограничных значений при создании блюд.
+    /// </summary>
+    public static IEnumerable<object[]> GetValidBoundaryDishTestData()
+    {
+        yield return new object[] { DishTestDataFactory.CreateSmallPortionDish() };
+        yield return new object[] { DishTestDataFactory.CreateLargePortionDish() };
+        yield return new object[] { DishTestDataFactory.CreateMacrosAtExactLimitDish() };
+    }
+
+    #endregion
+
+
+
+
+
+
+    #region Классы эквивалентности: невалидные сценарии создания
+
+    /// <summary>
+    /// Проверяет возврат ошибки валидации при передаче некорректных данных.
+    /// </summary>
+    /// <remarks>
+    /// Тест покрывает классы эквивалентности невалидного ввода:
+    /// - Нулевой или отрицательный размер порции
+    /// - Превышение лимита суммы БЖУ
+    /// </remarks>
+    [Theory(DisplayName = "КОГДА передаются некорректные данные, ТОГДА возвращается ошибка валидации")]
+    [MemberData(nameof(GetInvalidDishTestData))]
+    public async Task CreateDish_InvalidData_ReturnsBadRequest(DishCreateDto dto, string expectedError)
+    {
+        var client = _fixture.Client;
+
+        var response = await client.PostAsJsonAsync(DishUrl, dto);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = await response.Content.ReadAsStringAsync();
+        Assert.Contains(expectedError, error);
+    }
+
+    /// <summary>
+    /// Источник данных для теста невалидного ввода.
+    /// </summary>
     public static IEnumerable<object[]> GetInvalidDishTestData()
     {
         yield return new object[] { DishTestDataFactory.CreateZeroPortionDish(), "Portion size must be greater than 0" };
         yield return new object[] { DishTestDataFactory.CreateMacrosTooHighDish(), "Sum of proteins, fats, and carbohydrates per 100g cannot exceed 100g" };
     }
 
+    #endregion
+
+
+
+
+
+
+    #region Чтение и фильтрация: классы эквивалентности
+
+    /// <summary>
+    /// Проверяет корректность фильтрации блюд по категории при получении списка.
+    /// </summary>
+    /// <remarks>
+    /// Запрос с параметром категории должен возвращать только блюда, соответствующие 
+    /// указанному значению — класс эквивалентности по полю фильтрации.
+    /// </remarks>
     [Fact(DisplayName = "КОГДА запрашивается список блюд с фильтрами, ТОГДА возвращаются только подходящие блюда")]
     public async Task GetDishes_WithFilters_ReturnsCorrectDishes()
     {
@@ -121,6 +207,20 @@ public class DishesApiTests
         Assert.All(result!, d => Assert.Equal(DishCategory.Dessert, d.Category));
     }
 
+    #endregion
+
+
+
+
+    #region Обновление: валидные и невалидные сценарии
+
+    /// <summary>
+    /// Проверяет успешное обновление существующего блюда валидными данными.
+    /// </summary>
+    /// <remarks>
+    /// Класс эквивалентности: обновление с корректными значениями всех полей 
+    /// должно завершаться успешно и сохранять изменения.
+    /// </remarks>
     [Fact(DisplayName = "КОГДА обновляются данные существующего блюда, ТОГДА изменения успешно сохраняются")]
     public async Task UpdateDish_ValidUpdate_StoredCorrectly()
     {
@@ -145,6 +245,13 @@ public class DishesApiTests
         Assert.Equal(333, updated.PortionSize);
     }
 
+    /// <summary>
+    /// Проверяет отклонение обновления с невалидными данными (пограничное значение).
+    /// </summary>
+    /// <remarks>
+    /// Пограничное значение: размер порции = 0 (нижняя граница, недопустимая).
+    /// Система должна вернуть ошибку валидации.
+    /// </remarks>
     [Fact(DisplayName = "КОГДА блюдо обновляется невалидными данными, ТОГДА возвращается ошибка")]
     public async Task UpdateDish_InvalidPortion_ReturnsBadRequest()
     {
@@ -164,6 +271,21 @@ public class DishesApiTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    #endregion
+
+
+
+
+
+    #region Удаление: позитивный сценарий
+
+    /// <summary>
+    /// Проверяет полный цикл удаления блюда: создание → удаление → проверка отсутствия.
+    /// </summary>
+    /// <remarks>
+    /// Позитивный сценарий: удаление существующего блюда должно завершаться успешно, 
+    /// а последующий запрос к удалённому ресурсу — возвращать 404.
+    /// </remarks>
     [Fact(DisplayName = "КОГДА блюдо удаляется, ТОГДА оно больше не доступно в системе")]
     public async Task DeleteDish_Exists_RemovedSuccessfully()
     {
@@ -178,4 +300,6 @@ public class DishesApiTests
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
     }
+
 }
+#endregion
