@@ -109,7 +109,21 @@ public class DishesApiTests
 
 
 
+
     #region Пограничные значения: валидные граничные случаи создания
+
+
+    /// <summary>
+    /// Источник данных для теста пограничных значений при создании блюд.
+    /// </summary>
+    public static IEnumerable<object[]> GetValidBoundaryDishTestData()
+    {
+        yield return new object[] { DishTestDataFactory.CreateSmallPortionDish() };
+        yield return new object[] { DishTestDataFactory.CreateLargePortionDish() };
+        yield return new object[] { DishTestDataFactory.CreateMacrosAtExactLimitDish() };
+    }
+
+
 
     /// <summary>
     /// Проверяет создание блюд с пограничными, но валидными значениями параметров.
@@ -129,16 +143,6 @@ public class DishesApiTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
-    /// <summary>
-    /// Источник данных для теста пограничных значений при создании блюд.
-    /// </summary>
-    public static IEnumerable<object[]> GetValidBoundaryDishTestData()
-    {
-        yield return new object[] { DishTestDataFactory.CreateSmallPortionDish() };
-        yield return new object[] { DishTestDataFactory.CreateLargePortionDish() };
-        yield return new object[] { DishTestDataFactory.CreateMacrosAtExactLimitDish() };
-    }
-
     #endregion
 
 
@@ -147,6 +151,17 @@ public class DishesApiTests
 
 
     #region Классы эквивалентности: невалидные сценарии создания
+
+    /// <summary>
+    /// Источник данных для теста невалидного ввода.
+    /// </summary>
+    public static IEnumerable<object[]> GetInvalidDishTestData()
+    {
+        yield return new object[] { DishTestDataFactory.CreateZeroPortionDish(), "Portion size must be greater than 0" };
+        yield return new object[] { DishTestDataFactory.CreateMacrosTooHighDish(), "Sum of proteins, fats, and carbohydrates per 100g cannot exceed 100g" };
+    }
+
+
 
     /// <summary>
     /// Проверяет возврат ошибки валидации при передаче некорректных данных.
@@ -167,15 +182,6 @@ public class DishesApiTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var error = await response.Content.ReadAsStringAsync();
         Assert.Contains(expectedError, error);
-    }
-
-    /// <summary>
-    /// Источник данных для теста невалидного ввода.
-    /// </summary>
-    public static IEnumerable<object[]> GetInvalidDishTestData()
-    {
-        yield return new object[] { DishTestDataFactory.CreateZeroPortionDish(), "Portion size must be greater than 0" };
-        yield return new object[] { DishTestDataFactory.CreateMacrosTooHighDish(), "Sum of proteins, fats, and carbohydrates per 100g cannot exceed 100g" };
     }
 
     #endregion
@@ -234,7 +240,7 @@ public class DishesApiTests
             Id = created!.Id, 
             Title = "After Update Dish", 
             PortionSize = 333,
-            Category = DishCategory.Dessert 
+            Category = DishCategory.Dessert
         };
 
         var updateResponse = await client.PutAsJsonAsync($"{DishUrl}/{created.Id}", updateDto);
@@ -243,6 +249,7 @@ public class DishesApiTests
         Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
         Assert.Equal("After Update Dish", updated!.Title);
         Assert.Equal(333, updated.PortionSize);
+        Assert.Equal(DishCategory.Dessert, updated.Category); /////
     }
 
     /// <summary>

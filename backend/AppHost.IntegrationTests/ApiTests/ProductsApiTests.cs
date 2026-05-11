@@ -33,6 +33,19 @@ public class ProductsApiTests
     #region Классы эквивалентности: валидные сценарии создания
 
     /// <summary>
+    /// Предоставляет набор тестовых данных для проверки создания продуктов с валидными параметрами.
+    /// </summary>
+    public static IEnumerable<object[]> GetValidProductTestData()
+    {
+        yield return new object[] { ProductTestDataFactory.CreateValidProduct("Standard Apple"), "Standard Apple" };
+        yield return new object[] { ProductTestDataFactory.CreateMinimalProduct(), "Minimal" };
+        yield return new object[] { ProductTestDataFactory.CreateSpecialCharacterTitleProduct(), "Яблоко & Груша / Тест #1 (ÄÖÜ)" };
+        yield return new object[] { ProductTestDataFactory.CreateComplexDietaryFlagsProduct(), "Complex Dietary Product" };
+    }
+
+
+
+    /// <summary>
     /// Проверяет успешное создание продукта при передаче корректных данных.
     /// </summary>
     /// <remarks>
@@ -57,16 +70,6 @@ public class ProductsApiTests
         Assert.Equal(dto.Flags, result.Flags);
     }
 
-    /// <summary>
-    /// Предоставляет набор тестовых данных для проверки создания продуктов с валидными параметрами.
-    /// </summary>
-    public static IEnumerable<object[]> GetValidProductTestData()
-    {
-        yield return new object[] { ProductTestDataFactory.CreateValidProduct("Standard Apple"), "Standard Apple" };
-        yield return new object[] { ProductTestDataFactory.CreateMinimalProduct(), "Minimal" };
-        yield return new object[] { ProductTestDataFactory.CreateSpecialCharacterTitleProduct(), "Яблоко & Груша / Тест #1 (ÄÖÜ)" };
-        yield return new object[] { ProductTestDataFactory.CreateComplexDietaryFlagsProduct(), "Complex Dietary Product" };
-    }
 
     /// <summary>
     /// Проверяет создание продукта для каждой поддерживаемой категории.
@@ -103,6 +106,20 @@ public class ProductsApiTests
     #region Пограничные значения: валидные граничные случаи
 
     /// <summary>
+    /// Источник данных для теста пограничных значений калорийности.
+    /// </summary>
+    /// <remarks>
+    /// Используем MemberData вместо InlineData для поддержки типа decimal.
+    /// </remarks>
+    public static IEnumerable<object[]> GetBoundaryCaloriesTestData()
+    {
+        yield return new object[] { 0m, "Zero Calories" };
+        yield return new object[] { 0.01m, "Minimal Calories" };
+        yield return new object[] { 9000m, "Max Practical Calories" };
+    }
+
+
+    /// <summary>
     /// Проверяет успешное создание продукта при использовании граничных значений калорийности.
     /// </summary>
     /// <remarks>
@@ -124,19 +141,6 @@ public class ProductsApiTests
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.Equal(calories, result!.Calories);
-    }
-
-    /// <summary>
-    /// Источник данных для теста пограничных значений калорийности.
-    /// </summary>
-    /// <remarks>
-    /// Используем MemberData вместо InlineData для поддержки типа decimal.
-    /// </remarks>
-    public static IEnumerable<object[]> GetBoundaryCaloriesTestData()
-    {
-        yield return new object[] { 0m, "Zero Calories" };
-        yield return new object[] { 0.01m, "Minimal Calories" };
-        yield return new object[] { 9000m, "Max Practical Calories" };
     }
 
     /// <summary>
