@@ -101,7 +101,6 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({
           </Card>
         ))}
 
-        {photos.length < maxPhotos && (
           <Card
             component="label"
             sx={{
@@ -113,9 +112,8 @@ const PhotoUploader: React.FC<PhotoUploaderProps> = ({
             }}
           >
             <input type="file" accept="image/*" hidden onChange={handleFileUpload} />
-            <Plus />
+            {photos.length < maxPhotos && <Plus />}
           </Card>
-        )}
       </Box>
     </Box>
   );

@@ -25,5 +25,5 @@
     "noUncheckedSideEffectImports": true,
     "noEmitOnError": false
   },
-  "include": ["src"]
+  "include": ["src", "tests/ui.test.tsx"]
 }
