@@ -6,7 +6,7 @@ import {
   Card,
   CardContent,
   CardActions,
-  CardMedia,  // ✅ Добавлен импорт CardMedia
+  CardMedia, 
   Typography,
   TextField,
   FormControl,
@@ -21,7 +21,6 @@ import { getProducts, deleteProduct } from '../api';
 import type { ProductDto, DietaryFlags } from '../api/types';
 import { ProductCategoryLabels } from '../api/types';
 
-// ✅ Функция для формирования data URL
 const getPhotoSrc = (photo: string) => {
   return `data:image/jpeg;base64,${photo}`;
 };
@@ -133,13 +132,13 @@ const ProductsList: React.FC = () => {
           {products.map((product) => (
             <Box key={product.id} width={{ xs: '100%', sm: '48%', md: '30%' }}>
               <Card>
-                {/* ✅ Превью фотографии с CardMedia */}
+                {}
                 {product.photos && product.photos.length > 0 && (
                   <CardMedia
                     component="img"
                     height="140"
                     image={getPhotoSrc(product.photos[0])}
-                    alt={product.title ?? 'Продукт'}  // ✅ Защита от null
+                    alt={product.title ?? 'Продукт'}  
                     sx={{ objectFit: 'cover' }}
                   />
                 )}
