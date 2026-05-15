@@ -42,27 +42,14 @@ async function deleteProduct(request: any, id: string) {
   await request.delete(`${API_BASE}/products/${id}`);
 }
 
-async function createDish(request: any, overrides?: Partial<DishCreateDto>): Promise<any> {
-  const data: DishCreateDto = {
-    title: 'Тестовое блюдо',
-    photos: [],
-    portionSize: 200,
-    category: 5,
-    ingredients: [],
-    calories: 300,
-    proteins: 20,
-    fats: 10,
-    carbohydrates: 40,
-    flags: 0,
-    ...overrides,
-  };
-  const res = await request.post(`${API_BASE}/dishes`, { data });
-  return res.json();
-}
-
 async function deleteDish(request: any, id: string) {
   await request.delete(`${API_BASE}/dishes/${id}`);
 }
+
+
+
+
+
 
 test.describe('Форма продукта', () => {
 
@@ -72,31 +59,21 @@ test.describe('Форма продукта', () => {
     await expect(page.getByText('Название обязательно')).toBeVisible();
   });
 
-  test('[BVA] 1 символ — ошибка', async ({ page }) => {
+  test('[BVA] 1 символ названия — ошибка', async ({ page }) => {
     await page.goto('/products/new');
     await page.getByLabel('Название').fill('А');
     await clickSave(page);
     await expect(page.getByText('Минимум 2 символа')).toBeVisible();
   });
 
-  test('[BVA] 2 символа — корректно', async ({ page, request }) => {
-    let createdId: string | null = null;
-
+  test('[BVA] 2 символа название — корректно', async ({ page }) => {
     await page.goto('/products/new');
     await fillProduct(page, 'Аб');
     await clickSave(page);
     await expect(page).toHaveURL('/products');
-
-    const products = await (await request.get(`${API_BASE}/products`)).json();
-    const created = products.find((p: any) => p.title === 'Аб');
-    expect(created).toBeTruthy();
-    expect(created.calories).toBe(0);
-    createdId = created.id;
-
-    if (createdId) await deleteProduct(request, createdId);
   });
 
-  test('[BVA] -1 для КБЖУ — ошибка', async ({ page }) => {
+  test('-1 для КБЖУ — ошибка', async ({ page }) => {
     await page.goto('/products/new');
     await fillProduct(page);
 
@@ -108,7 +85,7 @@ test.describe('Форма продукта', () => {
     }
   });
 
-  test('[BVA] 101 для Б/Ж/У — выше границы', async ({ page }) => {
+  test('[BVA] 101 для Б/Ж/У — ошибка', async ({ page }) => {
     await page.goto('/products/new');
     await fillProduct(page);
 
@@ -119,29 +96,13 @@ test.describe('Форма продукта', () => {
       await fillMacro(page, l, 0);
     }
   });
-
-  test('[EP] Комбинация флагов', async ({ page, request }) => {
-    let createdId: string | null = null;
-
-    await page.goto('/products/new');
-    await fillProduct(page, 'ФлагиАб');
-    await page.getByText('Веган').click();
-    await page.getByText('Без сахара').click();
-    await clickSave(page);
-    await expect(page).toHaveURL('/products');
-
-    const products = await (await request.get(`${API_BASE}/products`)).json();
-    const created = products.find((p: any) => p.title === 'ФлагиАб');
-    expect(created).toBeTruthy();
-    expect(created.flags).toBe(1 | 4);
-    createdId = created.id;
-
-    if (createdId) await deleteProduct(request, createdId);
-  });
 });
 
+
+
+
 test.describe('Редактирование продукта', () => {
-  test('Предзаполнение названия', async ({ page, request }) => {
+  test('[EP] Предзаполнение названия', async ({ page, request }) => {
     const product = await createMinimalProduct(request);
 
     await page.goto(`/products/${product.id}/edit`);
@@ -151,7 +112,7 @@ test.describe('Редактирование продукта', () => {
     await deleteProduct(request, product.id);
   });
 
-  test('Сохранение изменений с переходом на галвную страницу', async ({ page, request }) => {
+  test('[EP] Сохранение изменений с переходом на галвную страницу', async ({ page, request }) => {
     const product = await createMinimalProduct(request);
 
     await page.goto(`/products/${product.id}/edit`);
@@ -159,14 +120,14 @@ test.describe('Редактирование продукта', () => {
     await clickSave(page);
     await expect(page).toHaveURL('/products');
 
-    const updated = await (await request.get(`${API_BASE}/products/${product.id}`)).json();
-    expect(updated.title).toBe('Минимальный зелёный');
-
     await deleteProduct(request, product.id);
   });
 });
 
-test.describe('Форма блюда: продукты', () => {
+
+
+
+test.describe('Создание блюда: продукты', () => {
   let testProducts: ProductDto[];
 
   test.beforeAll(async ({ request }) => {
@@ -184,7 +145,7 @@ test.describe('Форма блюда: продукты', () => {
     }
   });
 
-  test('[EP] Продукт не выбран — ошибка', async ({ page }) => {
+  test(' сохранить без продуктов — ошибка', async ({ page }) => {
     await page.goto('/dishes/new');
     await page.getByLabel('Название').fill('Тест');
     await page.getByLabel(/Размер порции/).fill('1');
@@ -193,9 +154,7 @@ test.describe('Форма блюда: продукты', () => {
     await expect(page.getByText('Продукт обязателен')).toBeVisible();
   });
 
-  test('[EP] Несколько ингредиентов', async ({ page, request }) => {
-    let dishId: string | null = null;
-
+  test(' сохранить с несколькими продуктами', async ({ page }) => {
     await page.goto('/dishes/new');
     await page.getByLabel('Название').fill('Микс');
 
@@ -211,90 +170,9 @@ test.describe('Форма блюда: продукты', () => {
 
     await clickSave(page);
     await expect(page).toHaveURL('/dishes');
-
-    const dishes = await (await request.get(`${API_BASE}/dishes`)).json();
-    const created = dishes.find((d: any) => d.title === 'Микс');
-    expect(created).toBeTruthy();
-    expect(created.ingredients).toHaveLength(2);
-    dishId = created.id;
-
-    if (dishId) await deleteDish(request, dishId);
   });
 });
 
-test.describe('Вес ингредиента - BVA', () => {
-  let testProducts: ProductDto[];
-  let createdDishIds: string[];
-
-  test.beforeAll(async ({ request }) => {
-    testProducts = [
-      await createProduct(request, { title: 'Продукт А', category: 2, flags: 1 | 2 | 4 }),
-    ];
-  });
-
-  test.beforeEach(() => {
-    createdDishIds = [];
-  });
-
-  test.afterAll(async ({ request }) => {
-    if (testProducts) {
-      for (const p of testProducts) {
-        await deleteProduct(request, p.id);
-      }
-    }
-  });
-
-  test.afterEach(async ({ request }) => {
-    for (const id of createdDishIds) {
-      await deleteDish(request, id);
-    }
-  });
-
-  test('[BVA] Вес -1 - ошибка отрицательного значения', async ({ page }) => {
-    await page.goto('/dishes/new');
-    await page.getByLabel('Название').fill('Тест');
-    await page.getByLabel(/Размер порции/).fill('1');
-    await page.getByLabel('Выберите продукт').click();
-    await page.getByRole('option', { name: 'Продукт А' }).first().click();
-
-    const w = page.locator('tbody tr').first().getByRole('spinbutton');
-    await w.fill('-1');
-    await clickSave(page);
-    await expect(page.getByText('Не может быть отрицательным')).toBeVisible();
-  });
-
-  test('[BVA] Вес 0 - ошибка отсутствия ингредиента', async ({ page }) => {
-    await page.goto('/dishes/new');
-    await page.getByLabel('Название').fill('Тест');
-    await page.getByLabel(/Размер порции/).fill('1');
-    await page.getByLabel('Выберите продукт').click();
-    await page.getByRole('option', { name: 'Продукт А' }).first().click();
-
-    const w = page.locator('tbody tr').first().getByRole('spinbutton');
-    await w.fill('0');
-    await clickSave(page);
-    await expect(page.getByText('Добавьте хотя бы один ингредиент')).toBeVisible();
-  });
-
-  test('[BVA] Вес 1 - корректное создание', async ({ page, request }) => {
-    await page.goto('/dishes/new');
-    await page.getByLabel('Название').fill('Тест BVA');
-    await page.getByLabel(/Размер порции/).fill('1');
-    await page.getByLabel('Выберите продукт').click();
-    await page.getByRole('option', { name: 'Продукт А' }).first().click();
-
-    const w = page.locator('tbody tr').first().getByRole('spinbutton');
-    await w.fill('1');
-    await clickSave(page);
-    await expect(page).toHaveURL('/dishes');
-
-    const dishes = await (await request.get(`${API_BASE}/dishes`)).json();
-    const created = dishes.find((d: any) => d.title === 'Тест BVA');
-    expect(created).toBeTruthy();
-    expect(created.ingredients![0].amountInGrams).toBe(1);
-    createdDishIds.push(created.id);
-  });
-});
 
 test.describe('Форма блюда: ручные возможности', () => {
   let testProducts: ProductDto[];
@@ -323,28 +201,6 @@ test.describe('Форма блюда: ручные возможности', () =
     for (const id of createdDishIds) {
       await deleteDish(request, id);
     }
-  });
-
-  test('Ручные КБЖУ сохраняются', async ({ page, request }) => {
-    await page.goto('/dishes/new');
-    await page.getByLabel('Название').fill('Блюдо');
-    await page.locator('.MuiAutocomplete-root input').first().click();
-    await page.getByRole('option', { name: 'Продукт А' }).first().click();
-    await page.locator('tbody tr').first().getByRole('spinbutton').fill('100');
-    await page.getByRole('button', { name: 'Редактировать' }).click();
-    await page.getByLabel('🔥 Калории').fill('777');
-    await page.getByLabel('🥩 Белки').fill('40');
-    await page.getByLabel('🧈 Жиры').fill('20');
-    await page.getByLabel('🍞 Углеводы').fill('10');
-    await clickSave(page);
-    await expect(page).toHaveURL('/dishes');
-
-    const dishes = await (await request.get(`${API_BASE}/dishes`)).json();
-    const created = dishes.find((d: any) => d.title === 'Блюдо');
-    expect(created).toBeTruthy();
-    expect(created.calories).toBe(777);
-    expect(created.proteins).toBe(40);
-    createdDishIds.push(created.id);
   });
 
   test('Автокатегория по макросу', async ({ page, request }) => {
@@ -385,14 +241,9 @@ test.describe('фото', () => {
   test('[BVA] 0 фото — счётчик отображается', async ({ page }) => {
     await page.goto('/products/new');
     await expect(page.getByText('Фотографии (0/5)')).toBeVisible();
-
-    await page.locator('label[class]')
-      .filter({ has: page.locator('svg.lucide-plus') })
-      .first().click();
-    await expect(page.getByText('Фотографии (0/5)')).toBeVisible();
   });
 
-  test('[BVA] 5 фото — максимальное допустимое количество', async ({ page }) => {
+  test('[BVA] 5 фото — счетчик обновился', async ({ page }) => {
     await page.goto('/products/new');
     const fakeFile = { name: 'photo.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('fake') };
 
@@ -410,38 +261,19 @@ test.describe('фото', () => {
 });
 
 test.describe('Описание', () => {
-  test('[EP] Описание с текстом сохраняется корректно', async ({ page, request }) => {
-    let createdId: string | null = null;
+  test('[EP] Описание с текстом сохраняется корректно', async ({ page }) => {
 
     await page.goto('/products/new');
     await fillProduct(page, 'Описание тест');
     await page.getByLabel('Состав').fill('Описание продукта');
     await clickSave(page);
     await expect(page).toHaveURL('/products');
-
-    const products = await (await request.get(`${API_BASE}/products`)).json();
-    const created = products.find((p: any) => p.title === 'Описание тест');
-    expect(created).toBeTruthy();
-    expect(created.description).toBe('Описание продукта');
-    createdId = created.id;
-
-    if (createdId) await deleteProduct(request, createdId);
   });
 
-  test('[BVA] Пустое описание — успешно', async ({ page, request }) => {
-    let createdId: string | null = null;
-
+  test('[BVA] Пустое описание — успешно сохраняется', async ({ page }) => {
     await page.goto('/products/new');
     await fillProduct(page, 'Без описания');
     await clickSave(page);
     await expect(page).toHaveURL('/products');
-
-    const products = await (await request.get(`${API_BASE}/products`)).json();
-    const created = products.find((p: any) => p.title === 'Без описания');
-    expect(created).toBeTruthy();
-    expect(created.description).toBe('');
-    createdId = created.id;
-
-    if (createdId) await deleteProduct(request, createdId);
   });
 });

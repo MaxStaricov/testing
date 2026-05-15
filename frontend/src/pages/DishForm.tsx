@@ -16,7 +16,7 @@ import type { Resolver } from 'react-hook-form';
 import { DishCategoryLabels } from '../api/types';
 import PhotoUploader from '../components/PhotoUploader';
 
-// ✅ Схема валидации
+
 const schema = yup.object({
   title: yup.string().required('Название обязательно').min(2, 'Минимум 2 символа'),
   portionSize: yup.number().required('Размер порции обязателен').positive('Должен быть положительным'),
@@ -45,15 +45,12 @@ const DishForm: React.FC = () => {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   
-  // ✅ Режимы ручного управления
   const [manualFlagsMode, setManualFlagsMode] = useState(false);
   const [manualMacrosMode, setManualMacrosMode] = useState(false);
 
-  // ✅ Refs для избежания stale closures (замкнутых областей видимости)
   const manualFlagsModeRef = useRef(false);
   const manualMacrosModeRef = useRef(false);
   
-  // Синхронизация Refs со State
   useEffect(() => { manualFlagsModeRef.current = manualFlagsMode; }, [manualFlagsMode]);
   useEffect(() => { manualMacrosModeRef.current = manualMacrosMode; }, [manualMacrosMode]);
 
@@ -75,7 +72,6 @@ const DishForm: React.FC = () => {
     return allProducts.find(p => p.id === productId) || null;
   }, [allProducts]);
 
-  // ✅ РАСЧЁТ КБЖУ И ФЛАГОВ
   const calculateMacrosAndFlags = useCallback(() => {
     if (!allProducts.length) return;
     const ingredients = watch('ingredients');
@@ -102,17 +98,14 @@ const DishForm: React.FC = () => {
       }
     });
 
-    // 🔥 ОБНОВЛЯЕМ КБЖУ ТОЛЬКО ЕСЛИ НЕ РУЧНОЙ РЕЖИМ
     if (!manualMacrosModeRef.current) {
       setValue('calories', Math.round(totalCalories), { shouldValidate: true });
       setValue('proteins', Math.round(totalProteins * 100) / 100, { shouldValidate: true });
       setValue('fats', Math.round(totalFats * 100) / 100, { shouldValidate: true });
       setValue('carbohydrates', Math.round(totalCarbs * 100) / 100, { shouldValidate: true });
     }
-    // Если manualMacrosMode = true, то функция всё равно сработала, 
-    // но setValue для КБЖУ не вызывается -> пользовательские значения сохраняются!
 
-    // 🔥 Пересчёт флагов ТОЛЬКО если НЕ ручной режим
+
     if (!manualFlagsModeRef.current && validIngredients.length > 0) {
       let newFlags = 0;
       if (validIngredients.every(ing => {
@@ -133,14 +126,11 @@ const DishForm: React.FC = () => {
         setValue('flags', newFlags, { shouldValidate: true });
       }
     }
-  }, [allProducts, setValue, getProductById, control, watch]); // ✅ manualMacrosMode НЕ в зависимостях!
-
-  // ✅ Фоновый пересчёт — срабатывает при каждом изменении ингредиентов
+  }, [allProducts, setValue, getProductById, control, watch]); 
   useEffect(() => {
     calculateMacrosAndFlags();
   }, [watchedIngredients, calculateMacrosAndFlags]);
 
-  // ✅ Debounce для плавности
   const debounceRef = useRef<number | null>(null);
   const triggerRecalculation = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -149,7 +139,6 @@ const DishForm: React.FC = () => {
     }, 100);
   }, [calculateMacrosAndFlags]);
 
-  // ✅ Обработчики изменений ингредиентов
   const handleAmountChange = useCallback((index: number, value: number | '') => {
     const numericValue = value === '' ? 0 : value;
     setValue(`ingredients.${index}.amountInGrams`, numericValue, { shouldValidate: true });
@@ -161,7 +150,6 @@ const DishForm: React.FC = () => {
     triggerRecalculation();
   }, [setValue, triggerRecalculation]);
 
-  // ✅ Загрузка блюда
   useEffect(() => {
     const loadDish = async () => {
       if (id) {
@@ -177,7 +165,6 @@ const DishForm: React.FC = () => {
           });
           setPhotos(dish.photos || []);
           
-          // Определяем ручной режим флагов при загрузке
           const validIng = (dish.ingredients || []).filter(ing => ing?.productId && (ing?.amountInGrams ?? 0) > 0);
           if (validIng.length > 0 && allProducts.length > 0) {
             let autoFlags = 0;
@@ -193,7 +180,6 @@ const DishForm: React.FC = () => {
     loadDish();
   }, [id, reset, allProducts]);
 
-  // ✅ Загрузка продуктов
   useEffect(() => {
     const loadProducts = async () => {
       setLoadingProducts(true);
@@ -204,7 +190,6 @@ const DishForm: React.FC = () => {
     loadProducts();
   }, []);
 
-  // ✅ Авто-категория по названию
   useEffect(() => {
     if (watchedTitle) {
       const t = watchedTitle.toLowerCase();
@@ -218,7 +203,6 @@ const DishForm: React.FC = () => {
     }
   }, [watchedTitle, setValue]);
 
-  // ✅ Переключение флагов
   const toggleFlag = useCallback((flagBit: number) => {
     const currentFlags = control._formValues.flags ?? 0;
     const newFlags = currentFlags ^ flagBit;
@@ -232,7 +216,6 @@ const DishForm: React.FC = () => {
     setTimeout(() => calculateMacrosAndFlags(), 0);
   }, [calculateMacrosAndFlags]);
 
-  // ✅ Переключение режима КБЖУ
   const toggleMacrosMode = useCallback(() => setManualMacrosMode(prev => !prev), []);
   const resetMacrosToAuto = useCallback(() => {
     setManualMacrosMode(false);
@@ -250,7 +233,6 @@ const DishForm: React.FC = () => {
     }
   };
 
-  // ✅ ОТПРАВКА ФОРМЫ
   const onSubmit = async (data: FormData) => {
     setLoading(true); setError(null);
     try {

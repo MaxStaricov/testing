@@ -35,7 +35,6 @@ const DishDetail: React.FC = () => {
         const dishData = await getDishById(id);
         setDish(dishData);
 
-        // Load products for ingredient names
         const allProducts = await getProducts({});
         setProducts(allProducts);
       } catch (error) {
@@ -47,9 +46,8 @@ const DishDetail: React.FC = () => {
     loadDish();
   }, [id]);
 
-// Для ProductDetail.tsx и DishDetail.tsx
+
 const getPhotoSrc = (photo: string) => {
-  // Предполагаем, что все фото - JPEG. Для поддержки других форматов нужна более сложная логика.
   return `data:image/jpeg;base64,${photo}`;
 };
 
@@ -143,7 +141,7 @@ const getPhotoSrc = (photo: string) => {
           key={index}
           component="img"
           height="140"
-          image={getPhotoSrc(photo)}  // ✅ ИСПРАВЛЕНО
+          image={getPhotoSrc(photo)} 
           alt={`Фото ${index + 1}`}
           sx={{ width: 140, objectFit: 'cover' }}
         />

@@ -6,7 +6,7 @@ import {
   Card,
   CardContent,
   CardActions,
-  CardMedia,  // ✅ Добавлен импорт CardMedia
+  CardMedia,  
   Typography,
   TextField,
   FormControl,
@@ -21,7 +21,7 @@ import { getDishes, deleteDish } from '../api';
 import type { DishDto } from '../api/types';
 import { DishCategoryLabels } from '../api/types';
 
-// ✅ Функция для формирования data URL
+
 const getPhotoSrc = (photo: string) => {
   return `data:image/jpeg;base64,${photo}`;
 };
@@ -111,13 +111,13 @@ const DishesList: React.FC = () => {
           {dishes.map((dish) => (
             <Box key={dish.id} width={{ xs: '100%', sm: '48%', md: '30%' }}>
               <Card>
-                {/* ✅ Превью фотографии с CardMedia */}
+                {}
                 {dish.photos && dish.photos.length > 0 && (
                   <CardMedia
                     component="img"
                     height="140"
                     image={getPhotoSrc(dish.photos[0])}
-                    alt={dish.title ?? 'Блюдо'}  // ✅ Защита от null/undefined
+                    alt={dish.title ?? 'Блюдо'} 
                     sx={{ objectFit: 'cover' }}
                   />
                 )}
